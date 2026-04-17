@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HASS Interactive Activities</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+:root{
+  --teal:#1a6b6b;--teal-lt:#e8f4f4;--teal-md:#a8d5d5;
+  --amber:#c8720a;--amber-lt:#fff3e0;
+  --slate:#2d3748;--slate-lt:#f7f8fa;--mid:#718096;--border:#e2e8f0;
+  --correct:#276749;--correct-lt:#e6f4ee;
+  --wrong:#9b2c2c;--wrong-lt:#fde8e8;
+  --radius:10px;--shadow:0 2px 12px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:#f0f4f8;color:var(--slate);line-height:1.6;padding:0;min-height:100vh;}
+
+.page-header{background:linear-gradient(135deg,var(--teal) 0%,#0e4545 100%);color:white;padding:28px 24px 24px;text-align:center;}
+.page-header h1{font-size:1.45rem;font-weight:700;margin-bottom:5px;}
+.page-header p{font-size:0.9rem;opacity:.85;max-width:560px;margin:0 auto;}
+
+.tab-nav{display:flex;gap:0;background:#0e4545;overflow-x:auto;-webkit-overflow-scrolling:touch;border-bottom:3px solid var(--teal-md);}
+.tab-btn{flex:0 0 auto;padding:11px 16px;background:none;border:none;color:rgba(255,255,255,.65);font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-3px;transition:color .2s,border-color .2s;text-transform:uppercase;letter-spacing:.04em;}
+.tab-btn:hover{color:white;}
+.tab-btn.active{color:white;border-bottom-color:#7fd8d8;}
+
+.activity{display:none;padding:20px 16px;max-width:900px;margin:0 auto;}
+.activity.active{display:block;}
+
+.activity-header{background:white;border-radius:var(--radius);padding:18px 22px;margin-bottom:18px;border-left:5px solid var(--teal);box-shadow:var(--shadow);}
+.activity-header h2{font-size:1.05rem;font-weight:700;color:var(--teal);margin-bottom:4px;}
+.activity-header p{font-size:.88rem;color:var(--mid);}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600;margin-right:6px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em;}
+.badge-teal{background:var(--teal-lt);color:var(--teal);}
+.badge-amber{background:var(--amber-lt);color:var(--amber);}
+
+/* ── Match layout ── */
+.match-wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+@media(max-width:600px){.match-wrap{grid-template-columns:1fr;}}
+.match-col-hdr{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);margin-bottom:10px;padding-left:2px;}
+
+/* Draggable items */
+.drag-item{background:white;border:2px solid var(--border);border-radius:8px;padding:11px 14px;font-size:.84rem;cursor:grab;user-select:none;transition:border-color .2s,box-shadow .2s,opacity .2s;box-shadow:var(--shadow);margin-bottom:10px;}
+.drag-item:hover{border-color:var(--teal);box-shadow:0 4px 16px rgba(26,107,107,.15);}
+.drag-item.dragging{opacity:.35;cursor:grabbing;}
+.drag-item.placed{opacity:.42;cursor:default;pointer-events:none;background:#f9f9f9;}
+
+/* Drop zones */
+.drop-zone-wrap{margin-bottom:12px;}
+.drop-zone{background:var(--slate-lt);border:2px dashed var(--border);border-radius:8px;padding:10px 12px;min-height:56px;font-size:.84rem;display:flex;align-items:center;gap:8px;transition:border-color .2s,background .2s;}
+.drop-zone .dz-prompt{font-weight:600;color:var(--slate);flex:0 0 auto;max-width:52%;font-size:.83rem;}
+.drop-zone .dz-slot{flex:1;min-height:36px;background:white;border:2px dashed #c8d4e0;border-radius:6px;display:flex;align-items:center;padding:4px 10px;font-size:.82rem;color:#a0aec0;font-style:italic;transition:all .2s;position:relative;}
+.drop-zone.dz-over{border-color:var(--teal);background:var(--teal-lt);}
+.drop-zone .dz-slot.filled{color:var(--slate);font-style:normal;background:var(--teal-lt);border-color:var(--teal);border-style:solid;}
+.drop-zone.correct .dz-slot{background:var(--correct-lt);border-color:var(--correct);color:var(--correct);}
+.drop-zone.wrong   .dz-slot{background:var(--wrong-lt);  border-color:var(--wrong);  color:var(--wrong);}
+.remove-btn{background:none;border:none;cursor:pointer;color:var(--mid);font-size:.95rem;padding:0 4px;flex-shrink:0;display:none;}
+.remove-btn.visible{display:block;}
+.fb-row{font-size:.8rem;margin-top:5px;padding:6px 10px;border-radius:6px;display:none;line-height:1.5;}
+.fb-row.show-c{display:block;background:var(--correct-lt);color:var(--correct);}
+.fb-row.show-w{display:block;background:var(--wrong-lt);color:var(--wrong);}
+
+/* Scenario cards */
+.scenario-card{background:white;border-radius:var(--radius);padding:18px 20px;margin-bottom:14px;box-shadow:var(--shadow);border-top:4px solid var(--amber);}
+.sc-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--amber);margin-bottom:5px;}
+.sc-text{font-size:.9rem;line-height:1.6;margin-bottom:12px;}
+.radio-grp{display:flex;flex-direction:column;gap:7px;}
+.radio-opt{display:flex;align-items:flex-start;gap:10px;padding:9px 13px;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-size:.86rem;transition:all .2s;}
+.radio-opt input{margin-top:2px;flex-shrink:0;}
+.radio-opt:hover:not(.locked){border-color:var(--amber);background:var(--amber-lt);}
+.radio-opt.selected{border-color:var(--amber);background:var(--amber-lt);}
+.radio-opt.correct-r{border-color:var(--correct);background:var(--correct-lt);}
+.radio-opt.wrong-r{border-color:var(--wrong);background:var(--wrong-lt);}
+.radio-opt.reveal-c{border-color:var(--correct);background:var(--correct-lt);}
+.sc-feedback{margin-top:10px;padding:9px 13px;border-radius:8px;font-size:.83rem;display:none;line-height:1.5;}
+.sc-feedback.show-c{display:block;background:var(--correct-lt);color:var(--correct);border-left:4px solid var(--correct);}
+.sc-feedback.show-w{display:block;background:var(--wrong-lt);color:var(--wrong);border-left:4px solid var(--wrong);}
+
+/* Card match (Act 5) */
+.cm-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+@media(max-width:700px){.cm-grid{grid-template-columns:repeat(2,1fr);}}
+.cm-col-hdr{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);margin-bottom:8px;padding:0 2px;}
+.cm-card{background:white;border:2px solid var(--border);border-radius:8px;padding:11px;font-size:.8rem;cursor:pointer;transition:all .2s;line-height:1.5;min-height:88px;box-shadow:var(--shadow);margin-bottom:9px;}
+.cm-card:hover{border-color:var(--teal);background:var(--teal-lt);}
+.cm-card.cm-selected{border-color:var(--teal);background:var(--teal-lt);}
+.cm-card.cm-correct{border-color:var(--correct);background:var(--correct-lt);}
+.cm-card.cm-wrong{border-color:var(--wrong);background:var(--wrong-lt);}
+
+/* Buttons & score */
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+.btn{padding:10px 22px;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.86rem;font-weight:600;cursor:pointer;transition:all .2s;}
+.btn-primary{background:var(--teal);color:white;}
+.btn-primary:hover{background:#145555;}
+.btn-secondary{background:white;color:var(--slate);border:2px solid var(--border);}
+.btn-secondary:hover{border-color:var(--teal);color:var(--teal);}
+.score-banner{display:none;background:white;border-radius:10px;padding:15px 20px;margin-top:16px;border-left:5px solid var(--teal);box-shadow:var(--shadow);font-size:.9rem;}
+.score-banner.show{display:block;}
+.score-banner strong{color:var(--teal);font-size:1.05rem;}
+
+/* ── Total Score Panel ── */
+.total-score-panel{text-align:center;padding:30px 20px;}
+.total-score-ring{width:160px;height:160px;margin:0 auto 20px;}
+.total-score-num{font-size:2.2rem;font-weight:700;color:var(--teal);}
+.total-score-label{font-size:.9rem;color:var(--mid);margin-bottom:24px;}
+.breakdown-table{width:100%;max-width:540px;margin:0 auto;border-collapse:separate;border-spacing:0;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+.breakdown-table th{background:var(--teal);color:white;padding:10px 14px;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;text-align:left;}
+.breakdown-table td{background:white;padding:10px 14px;font-size:.86rem;border-bottom:1px solid var(--border);}
+.breakdown-table tr:last-child td{border-bottom:none;}
+.breakdown-table .score-cell{text-align:center;font-weight:700;color:var(--teal);width:90px;}
+.breakdown-table .status-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;}
+.dot-perfect{background:var(--correct);}
+.dot-partial{background:var(--amber);}
+.dot-none{background:var(--border);}
+.total-row td{background:var(--teal-lt);font-weight:700;border-top:2px solid var(--teal);}
+.total-msg{margin-top:18px;padding:14px 20px;border-radius:var(--radius);font-size:.9rem;max-width:540px;margin-left:auto;margin-right:auto;}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>HASS Interactive Learning Activities</h1>
+  <p>Five activities covering curriculum alignment, assessment strategies and record-keeping</p>
+</div>
+
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="showTab(0)">① Match: CDs &amp; Intentions</button>
+  <button class="tab-btn" onclick="showTab(1)">② Detective: Alignment</button>
+  <button class="tab-btn" onclick="showTab(2)">③ Match: Assessment &amp; Records</button>
+  <button class="tab-btn" onclick="showTab(3)">④ Detective: Assessment</button>
+  <button class="tab-btn" onclick="showTab(4)">⑤ Card Match: Full Cycle</button>
+  <button class="tab-btn" onclick="showTab(5);calcTotal()">📊 Total Score</button>
+</nav>
+
+<!-- ══════════════════ ACTIVITY 1 ══════════════════ -->
+<div class="activity active" id="act0">
+  <div class="activity-header">
+    <span class="badge badge-teal">Drag &amp; Drop</span><span class="badge badge-amber">Curriculum Alignment</span>
+    <h2>Activity 1 — Match Content Descriptors to Learning Intentions</h2>
+    <p>Drag each content descriptor from the left column into the matching learning intention on the right. Click <strong>Check Answers</strong> when done.</p>
+  </div>
+  <div class="match-wrap">
+    <div>
+      <div class="match-col-hdr">Content Descriptors — drag these</div>
+      <div id="bank-1">
+        <div class="drag-item" id="di-1-a" draggable="true" data-act="1" data-id="a">Examine how people lived in the past and how the present is different from the past (AC9HS3K01)</div>
+        <div class="drag-item" id="di-1-b" draggable="true" data-act="1" data-id="b">Describe a place in Australia and explain why it is important (AC9HS3K04)</div>
+        <div class="drag-item" id="di-1-c" draggable="true" data-act="1" data-id="c">Explain why and how people participate in and contribute to their communities (AC9HS4K06)</div>
+        <div class="drag-item" id="di-1-d" draggable="true" data-act="1" data-id="d">Sequence information about events and the lives of individuals in chronological order (AC9HS3S01)</div>
+        <div class="drag-item" id="di-1-e" draggable="true" data-act="1" data-id="e">Locate and collect information from primary and secondary sources (AC9HS4S02)</div>
+      </div>
+    </div>
+    <div>
+      <div class="match-col-hdr">Learning Intentions — drop the matching CD</div>
+      <div class="drop-zone-wrap">
+        <div class="drop-zone" id="dz-1-a" data-act="1" data-target="a">
+          <span class="dz-prompt">We are learning to compare daily life in the past with life today using historical sources.</span>
+          <span class="dz-slot" id="slot-1-a">Drop here…</span>
+          <button class="remove-btn" id="rm-1-a" onclick="removeItem('1','a')" title="Remove">✕</button>
+        </div>
+        <div class="fb-row" id="fb-1-a"></div>
+      </div>
+      <div class="drop-zone-wrap">
+        <div class="drop-zone" id="dz-1-b" data-act="1" data-target="b">
+          <span class="dz-prompt">We are learning to describe features of a place in Australia and explain why it matters to people.</span>
+          <span class="dz-slot" id="slot-1-b">Drop here…</span>
+          <button class="remove-btn" id="rm-1-b" onclick="removeItem('1','b')" title="Remove">✕</button>
+        </div>
+        <div class="fb-row" id="fb-1-b"></div>
+      </div>
+      <div class="drop-zone-wrap">
+        <div class="drop-zone" id="dz-1-c" data-act="1" data-target="c">
+          <span class="dz-prompt">We are learning to identify ways citizens can actively contribute to their local community.</span>
+          <span class="dz-slot" id="slot-1-c">Drop here…</span>
+          <button class="remove-btn" id="rm-1-c" onclick="removeItem('1','c')" title="Remove">✕</button>
+        </div>
+        <div class="fb-row" id="fb-1-c"></div>
+      </div>
+      <div class="drop-zone-wrap">
+        <div class="drop-zone" id="dz-1-d" data-act="1" data-target="d">
+          <span class="dz-prompt">We are learning to order key events on a timeline from earliest to most recent.</span>
+          <span class="dz-slot" id="slot-1-d">Drop here…</span>
+          <button class="remove-btn" id="rm-1-d" onclick="removeItem('1','d')" title="Remove">✕</button>
+        </div>
+        <div class="fb-row" id="fb-1-d"></div>
+      </div>
+      <div class="drop-zone-wrap">
+        <div class="drop-zone" id="dz-1-e" data-act="1" data-target="e">
+          <span class="dz-prompt">We are learning to find information from at least one primary source and one secondary source.</span>
+          <span class="dz-slot" id="slot-1-e">Drop here…</span>
+          <button class="remove-btn" id="rm-1-e" onclick="removeItem('1','e')" title="Remove">✕</button>
+        </div>
+        <div class="fb-row" id="fb-1-e"></div>
+      </div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="checkMatch('1')">Check Answers</button>
+    <button class="btn btn-secondary" onclick="resetMatch('1')">Reset</button>
+  </div>
+  <div class="score-banner" id="score-1"></div>
+</div>
+
+<!-- ══════════════════ ACTIVITY 2 ══════════════════ -->
+<div class="activity" id="act1">
+  <div class="activity-header">
+    <span class="badge badge-amber">Scenario-Based</span><span class="badge badge-teal">Alignment</span>
+    <h2>Activity 2 — Alignment Detective</h2>
+    <p>Read each classroom scenario. Decide whether the learning intention is <em>well-aligned</em>, <em>partially aligned</em>, or <em>not aligned</em> with the content descriptor shown.</p>
+  </div>
+
+  <div class="scenario-card">
+    <div class="sc-label">Scenario 1 of 5</div>
+    <div class="sc-text"><strong>CD:</strong> Explain the importance of Country/Place to Aboriginal and Torres Strait Islander peoples (AC9HS4K03)<br><br><strong>LI:</strong> "We are learning to draw a map of an Aboriginal community."</div>
+    <div class="radio-grp" id="rg-2-0">
+      <label class="radio-opt"><input type="radio" name="sc-2-0" value="0"> Well-aligned</label>
+      <label class="radio-opt"><input type="radio" name="sc-2-0" value="1"> Partially aligned</label>
+      <label class="radio-opt"><input type="radio" name="sc-2-0" value="2"> Not aligned</label>
+    </div>
+    <div class="sc-feedback" id="scfb-2-0"></div>
+  </div>
+
+  <div class="scenario-card">
+    <div class="sc-label">Scenario 2 of 5</div>
+    <div class="sc-text"><strong>CD:</strong> Describe factors that influence the characteristics of places, including the environment, people and events (AC9HS5K04)<br><br><strong>LI:</strong> "We are learning to explain how climate, people, and historical events shape the character of a place."</div>
+    <div class="radio-grp" id="rg-2-1">
+      <label class="radio-opt"><input type="radio" name="sc-2-1" value="0"> Well-aligned</label>
+      <label class="radio-opt"><input type="radio" name="sc-2-1" value="1"> Partially aligned</label>
+      <label class="radio-opt"><input type="radio" name="sc-2-1" value="2"> Not aligned</label>
+    </div>
+    <div class="sc-feedback" id="scfb-2-1"></div>
+  </div>
+
+  <div class="scenario-card">
+    <div class="sc-label">Scenario 3 of 5</div>
+    <div class="sc-text"><strong>CD:</strong> Present findings using discipline-appropriate representations (AC9HS6S06)<br><br><strong>LI:</strong> "We are learning to write a persuasive essay about a local issue."</div>
+    <div class="radio-grp" id="rg-2-2">
+      <label class="radio-opt"><input type="radio" name="sc-2-2" value="0"> Well-aligned</label>
+      <label class="radio-opt"><input type="radio" name="sc-2-2" value="1"> Partially aligned</label>
+      <label class="radio-opt"><input type="radio" name="sc-2-2" value="2"> Not aligned</label>
+    </div>
+    <div class="sc-feedback" id="scfb-2-2"></div>
+  </div>
+
+  <div class="scenario-card">
+    <div class="sc-label">Scenario 4 of 5</div>
+    <div class="sc-text"><strong>CD:</strong> Propose a course of action in response to a local civic issue and consider the effects of the action (AC9HS6K08)<br><br><strong>LI:</strong> "We are learning to suggest a solution to a problem in our community and think about what might happen as a result."</div>
+    <div class="radio-grp" id="rg-2-3">
+      <label class="radio-opt"><input type="radio" name="sc-2-3" value="0"> Well-aligned</label>
+      <label class="radio-opt"><input type="radio" name="sc-2-3" value="1"> Partially aligned</label>
+      <label class="radio-opt"><input type="radio" name="sc-2-3" value="2"> Not aligned</label>
+    </div>
+    <div class="sc-feedback" id="scfb-2-3"></div>
+  </div>
+
+  <div class="scenario-card">
+    <div class="sc-label">Scenario 5 of 5</div>
+    <div class="sc-text"><strong>CD:</strong> Identify points of view and distinguish facts from opinions in sources (AC9HS5S03)<br><br><strong>LI:</strong> "We are learning to find information in a range of sources."</div>
+    <div class="radio-grp" id="rg-2-4">
+      <label class="radio-opt"><input type="radio" name="sc-2-4" value="0"> Well-aligned</label>
+      <label class="radio-opt"><input type="radio" name="sc-2-4" value="1"> Partially aligned</label>
+      <label class="radio-opt"><input type="radio" name="sc-2-4" value="2"> Not aligned</label>
+    </div>
+    <div class="sc-feedback" id="scfb-2-4"></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="checkDetective('2')">Check Answers</button>
+    <button class="btn btn-secondary" onclick="resetDetective('2')">Reset</button>
+  </div>
+  <div class="score-banner" id="score-2"></div>
+</div>
+
+<!-- ══════════════════ ACTIVITY 3 ══════════════════ -->
+<div class="activity" id="act2">
+  <div class="activity-header">
+    <span class="badge badge-teal">Drag &amp; Drop</span><span class="badge badge-amber">Assessment</span>
+    <h2>Activity 3 — Match Assessment Strategies to Record-Keeping Devices</h2>
+    <p>Drag each assessment strategy to the record-keeping device that best aligns with it. Consider the purpose (as / for / of learning) and the type of evidence produced.</p>
+  </div>
+  <div class="match-wrap">
+    <div>
+      <div class="match-col-hdr">Assessment Strategies — drag these</div>
+      <div id="bank-3">
+        <div class="drag-item" id="di-3-a" draggable="true" data-act="3" data-id="a">Exit ticket — students rate their own confidence (1–4) and write one thing they learned</div>
+        <div class="drag-item" id="di-3-b" draggable="true" data-act="3" data-id="b">Teacher observes and listens during a Think-Pair-Share HASS discussion</div>
+        <div class="drag-item" id="di-3-c" draggable="true" data-act="3" data-id="c">Students create a multimedia documentary using WeVideo about a local historical event</div>
+        <div class="drag-item" id="di-3-d" draggable="true" data-act="3" data-id="d">Students complete a KWL+ chart at the start, middle and end of a HASS unit</div>
+        <div class="drag-item" id="di-3-e" draggable="true" data-act="3" data-id="e">Whole-class Mentimeter poll — "Which factor most affects where people live?"</div>
+        <div class="drag-item" id="di-3-f" draggable="true" data-act="3" data-id="f">Students record a Flip video explaining their thinking after a HASS inquiry</div>
+      </div>
+    </div>
+    <div>
+      <div class="match-col-hdr">Record-Keeping Devices — drop the best strategy</div>
+      <div class="drop-zone-wrap">
+        <div class="drop-zone" id="dz-3-a" data-act="3" data-target="a">
+          <span class="dz-prompt">Digital class tracking spreadsheet (colour-coded by confidence level)</span>
+          <span class="dz-slot" id="slot-3-a">Drop here…</span>
+          <button class="remove-btn" id="rm-3-a" onclick="removeItem('3','a')" title="Remove">✕</button>
+        </div>
+        <div class="fb-row" id="fb-3-a"></div>
+      </div>
+      <div class="drop-zone-wrap">
+        <div class="drop-zone" id="dz-3-b" data-act="3" data-target="b">
+          <span class="dz-prompt">Anecdotal notes / observation checklist (class list with skills as columns)</span>
+          <span class="dz-slot" id="slot-3-b">Drop here…</span>
+          <button class="remove-btn" id="rm-3-b" onclick="removeItem('3','b')" title="Remove">✕</button>
+        </div>
+        <div class="fb-row" id="fb-3-b"></div>
+      </div>
+      <div class="drop-zone-wrap">
+        <div class="drop-zone" id="dz-3-c" data-act="3" data-target="c">
+          <span class="dz-prompt">Assessment rubric aligned to ACARA achievement standards</span>
+          <span class="dz-slot" id="slot-3-c">Drop here…</span>
+          <button class="remove-btn" id="rm-3-c" onclick="removeItem('3','c')" title="Remove">✕</button>
+        </div>
+        <div class="fb-row" id="fb-3-c"></div>
+      </div>
+      <div class="drop-zone-wrap">
+        <div class="drop-zone" id="dz-3-d" data-act="3" data-target="d">
+          <span class="dz-prompt">Portfolio / folio of student work (physical or Seesaw digital portfolio)</span>
+          <span class="dz-slot" id="slot-3-d">Drop here…</span>
+          <button class="remove-btn" id="rm-3-d" onclick="removeItem('3','d')" title="Remove">✕</button>
+        </div>
+        <div class="fb-row" id="fb-3-d"></div>
+      </div>
+      <div class="drop-zone-wrap">
+        <div class="drop-zone" id="dz-3-e" data-act="3" data-target="e">
+          <span class="dz-prompt">Exported Mentimeter / Nearpod report (auto-generated class summary)</span>
+          <span class="dz-slot" id="slot-3-e">Drop here…</span>
+          <button class="remove-btn" id="rm-3-e" onclick="removeItem('3','e')" title="Remove">✕</button>
+        </div>
+        <div class="fb-row" id="fb-3-e"></div>
+      </div>
+      <div class="drop-zone-wrap">
+        <div class="drop-zone" id="dz-3-f" data-act="3" data-target="f">
+          <span class="dz-prompt">Digital portfolio with teacher-annotated video comments (Seesaw or Flip)</span>
+          <span class="dz-slot" id="slot-3-f">Drop here…</span>
+          <button class="remove-btn" id="rm-3-f" onclick="removeItem('3','f')" title="Remove">✕</button>
+        </div>
+        <div class="fb-row" id="fb-3-f"></div>
+      </div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="checkMatch('3')">Check Answers</button>
+    <button class="btn btn-secondary" onclick="resetMatch('3')">Reset</button>
+  </div>
+  <div class="score-banner" id="score-3"></div>
+</div>
+
+<!-- ══════════════════ ACTIVITY 4 ══════════════════ -->
+<div class="activity" id="act3">
+  <div class="activity-header">
+    <span class="badge badge-amber">Scenario-Based</span><span class="badge badge-teal">Assessment</span>
+    <h2>Activity 4 — Assessment Detective</h2>
+    <p>Read each classroom snapshot. Identify the <em>primary purpose</em> of the assessment described: <em>as</em>, <em>for</em>, or <em>of</em> learning.</p>
+  </div>
+
+  <div class="scenario-card">
+    <div class="sc-label">Scenario 1 of 5</div>
+    <div class="sc-text">Halfway through a Geography unit, the teacher pauses and shows a Mentimeter word cloud of student responses to "What factors affect where people choose to live?" She notices gaps and decides to reteach the environmental factors next lesson.</div>
+    <div class="radio-grp" id="rg-4-0">
+      <label class="radio-opt"><input type="radio" name="sc-4-0" value="0"> Assessment as learning</label>
+      <label class="radio-opt"><input type="radio" name="sc-4-0" value="1"> Assessment for learning</label>
+      <label class="radio-opt"><input type="radio" name="sc-4-0" value="2"> Assessment of learning</label>
+    </div>
+    <div class="sc-feedback" id="scfb-4-0"></div>
+  </div>
+
+  <div class="scenario-card">
+    <div class="sc-label">Scenario 2 of 5</div>
+    <div class="sc-text">At the end of a Civics and Citizenship unit, students complete an individual inquiry report. The teacher uses a rubric aligned to the Year 5 achievement standard to make a summative judgement about each student's attainment.</div>
+    <div class="radio-grp" id="rg-4-1">
+      <label class="radio-opt"><input type="radio" name="sc-4-1" value="0"> Assessment as learning</label>
+      <label class="radio-opt"><input type="radio" name="sc-4-1" value="1"> Assessment for learning</label>
+      <label class="radio-opt"><input type="radio" name="sc-4-1" value="2"> Assessment of learning</label>
+    </div>
+    <div class="sc-feedback" id="scfb-4-1"></div>
+  </div>
+
+  <div class="scenario-card">
+    <div class="sc-label">Scenario 3 of 5</div>
+    <div class="sc-text">Students review their KWL+ charts from the start of the unit, add to the 'L' and 'Q' columns, then write two goals for what they want to improve before the unit ends.</div>
+    <div class="radio-grp" id="rg-4-2">
+      <label class="radio-opt"><input type="radio" name="sc-4-2" value="0"> Assessment as learning</label>
+      <label class="radio-opt"><input type="radio" name="sc-4-2" value="1"> Assessment for learning</label>
+      <label class="radio-opt"><input type="radio" name="sc-4-2" value="2"> Assessment of learning</label>
+    </div>
+    <div class="sc-feedback" id="scfb-4-2"></div>
+  </div>
+
+  <div class="scenario-card">
+    <div class="sc-label">Scenario 4 of 5</div>
+    <div class="sc-text">The teacher circulates during a map annotation task, making anecdotal notes on which students can accurately identify human and physical features. She uses these notes to form flexible groups for the next activity.</div>
+    <div class="radio-grp" id="rg-4-3">
+      <label class="radio-opt"><input type="radio" name="sc-4-3" value="0"> Assessment as learning</label>
+      <label class="radio-opt"><input type="radio" name="sc-4-3" value="1"> Assessment for learning</label>
+      <label class="radio-opt"><input type="radio" name="sc-4-3" value="2"> Assessment of learning</label>
+    </div>
+    <div class="sc-feedback" id="scfb-4-3"></div>
+  </div>
+
+  <div class="scenario-card">
+    <div class="sc-label">Scenario 5 of 5</div>
+    <div class="sc-text">Before beginning a new HASS unit, students complete a self-assessment checklist rating their confidence with key vocabulary and concepts. They share their checklist with a peer who adds a comment.</div>
+    <div class="radio-grp" id="rg-4-4">
+      <label class="radio-opt"><input type="radio" name="sc-4-4" value="0"> Assessment as learning</label>
+      <label class="radio-opt"><input type="radio" name="sc-4-4" value="1"> Assessment for learning</label>
+      <label class="radio-opt"><input type="radio" name="sc-4-4" value="2"> Assessment of learning</label>
+    </div>
+    <div class="sc-feedback" id="scfb-4-4"></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="checkDetective('4')">Check Answers</button>
+    <button class="btn btn-secondary" onclick="resetDetective('4')">Reset</button>
+  </div>
+  <div class="score-banner" id="score-4"></div>
+</div>
+
+<!-- ══════════════════ ACTIVITY 5 ══════════════════ -->
+<div class="activity" id="act4">
+  <div class="activity-header">
+    <span class="badge badge-teal">Card Matching</span><span class="badge badge-amber">Synthesis</span>
+    <h2>Activity 5 — Full Cycle Match: Strategy → Purpose → ICT Tool → Record</h2>
+    <p>Click one card in <strong>each</strong> column that you think belongs to the same assessment cycle, then click <strong>Check Answers</strong>. Reset to try another cycle.</p>
+  </div>
+
+  <div class="cm-grid">
+    <div>
+      <div class="cm-col-hdr">Assessment Strategy</div>
+      <div class="cm-card" id="cm-0-0" data-col="0" data-row="0" onclick="cmClick(0,0,this)">Student reflection video explaining their historical inquiry process</div>
+      <div class="cm-card" id="cm-0-1" data-col="0" data-row="1" onclick="cmClick(0,1,this)">Whole-class Kahoot quiz on Geography concepts mid-unit</div>
+      <div class="cm-card" id="cm-0-2" data-col="0" data-row="2" onclick="cmClick(0,2,this)">End-of-unit multimedia documentary on a local historical event</div>
+      <div class="cm-card" id="cm-0-3" data-col="0" data-row="3" onclick="cmClick(0,3,this)">Teacher observation during Socratic seminar discussion</div>
+      <div class="cm-card" id="cm-0-4" data-col="0" data-row="4" onclick="cmClick(0,4,this)">KWL+ chart revisited at start, middle and end of unit</div>
+    </div>
+    <div>
+      <div class="cm-col-hdr">Purpose</div>
+      <div class="cm-card" id="cm-1-0" data-col="1" data-row="0" onclick="cmClick(1,0,this)">Assessment as learning (metacognitive reflection)</div>
+      <div class="cm-card" id="cm-1-1" data-col="1" data-row="1" onclick="cmClick(1,1,this)">Assessment for learning (formative check-in)</div>
+      <div class="cm-card" id="cm-1-2" data-col="1" data-row="2" onclick="cmClick(1,2,this)">Assessment of learning (summative judgement)</div>
+      <div class="cm-card" id="cm-1-3" data-col="1" data-row="3" onclick="cmClick(1,3,this)">Assessment for learning (live observational data)</div>
+      <div class="cm-card" id="cm-1-4" data-col="1" data-row="4" onclick="cmClick(1,4,this)">Assessment as learning (self-monitoring over time)</div>
+    </div>
+    <div>
+      <div class="cm-col-hdr">ICT Tool</div>
+      <div class="cm-card" id="cm-2-0" data-col="2" data-row="0" onclick="cmClick(2,0,this)">Flip (Flipgrid) or Seesaw video response</div>
+      <div class="cm-card" id="cm-2-1" data-col="2" data-row="1" onclick="cmClick(2,1,this)">Kahoot or Mentimeter live poll</div>
+      <div class="cm-card" id="cm-2-2" data-col="2" data-row="2" onclick="cmClick(2,2,this)">WeVideo, Book Creator or Canva video</div>
+      <div class="cm-card" id="cm-2-3" data-col="2" data-row="3" onclick="cmClick(2,3,this)">Nearpod open question or teacher observation app</div>
+      <div class="cm-card" id="cm-2-4" data-col="2" data-row="4" onclick="cmClick(2,4,this)">Padlet or Google Slides (shared template)</div>
+    </div>
+    <div>
+      <div class="cm-col-hdr">Record-Keeping Device</div>
+      <div class="cm-card" id="cm-3-0" data-col="3" data-row="0" onclick="cmClick(3,0,this)">Annotated digital portfolio with teacher audio/video feedback</div>
+      <div class="cm-card" id="cm-3-1" data-col="3" data-row="1" onclick="cmClick(3,1,this)">Exported class results report (spreadsheet / PDF)</div>
+      <div class="cm-card" id="cm-3-2" data-col="3" data-row="2" onclick="cmClick(3,2,this)">Rubric mapped to ACARA achievement standards</div>
+      <div class="cm-card" id="cm-3-3" data-col="3" data-row="3" onclick="cmClick(3,3,this)">Anecdotal notes / observation checklist (class list)</div>
+      <div class="cm-card" id="cm-3-4" data-col="3" data-row="4" onclick="cmClick(3,4,this)">Portfolio / folio (physical or Seesaw) showing growth</div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="checkCardMatch()">Check Answers</button>
+    <button class="btn btn-secondary" onclick="resetCardMatch()">Reset</button>
+  </div>
+  <div class="score-banner" id="score-5"></div>
+</div>
+
+<!-- ══════════════════ TOTAL SCORE ══════════════════ -->
+<div class="activity" id="act5">
+  <div class="activity-header">
+    <span class="badge badge-teal">Summary</span><span class="badge badge-amber">All Activities</span>
+    <h2>Total Score — All Activities</h2>
+    <p>Your combined results across all five activities. Complete each activity and click <strong>Check Answers</strong> before viewing your total.</p>
+  </div>
+  <div class="total-score-panel">
+    <div class="total-score-num" id="total-num">— / —</div>
+    <div class="total-score-label">Total correct answers</div>
+    <table class="breakdown-table">
+      <thead><tr><th>Activity</th><th>Type</th><th class="score-cell">Score</th></tr></thead>
+      <tbody id="breakdown-body">
+        <tr><td>① Match: CDs &amp; Intentions</td><td>Drag &amp; Drop</td><td class="score-cell" id="ts-1">—</td></tr>
+        <tr><td>② Detective: Alignment</td><td>Scenario</td><td class="score-cell" id="ts-2">—</td></tr>
+        <tr><td>③ Match: Assessment &amp; Records</td><td>Drag &amp; Drop</td><td class="score-cell" id="ts-3">—</td></tr>
+        <tr><td>④ Detective: Assessment</td><td>Scenario</td><td class="score-cell" id="ts-4">—</td></tr>
+        <tr><td>⑤ Card Match: Full Cycle</td><td>Card Match</td><td class="score-cell" id="ts-5">—</td></tr>
+        <tr class="total-row"><td colspan="2">Total</td><td class="score-cell" id="ts-total">—</td></tr>
+      </tbody>
+    </table>
+    <div class="total-msg" id="total-msg"></div>
+    <div class="btn-row" style="justify-content:center;margin-top:20px;">
+      <button class="btn btn-primary" onclick="calcTotal()">Refresh Scores</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// TEACHER SETUP: Paste your Google Apps Script Web App URL below
+// ══════════════════════════════════════════════════
+var GOOGLE_SHEET_URL = '';
+
+// ── Student identification ───────────────────────
+var studentName = '';
+function getStudentName(){
+  if(studentName) return studentName;
+  studentName = sessionStorage.getItem('hass_student_name') || '';
+  if(!studentName){
+    studentName = prompt('Please enter your name (for your teacher\'s records):','') || 'Anonymous';
+    sessionStorage.setItem('hass_student_name', studentName);
+  }
+  return studentName;
+}
+
+// ── Log results to Google Sheet ──────────────────
+function logToSheet(activity, score, total){
+  if(!GOOGLE_SHEET_URL) return;
+  var name = getStudentName();
+  try {
+    fetch(GOOGLE_SHEET_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        timestamp: new Date().toISOString(),
+        student: name,
+        activity: activity,
+        score: score,
+        total: total,
+        percentage: Math.round((score/total)*100)
+      })
+    });
+  } catch(e){}
+}
+
+var activityNames = {
+  '1': 'Activity 1 — Match CDs & Intentions',
+  '2': 'Activity 2 — Alignment Detective',
+  '3': 'Activity 3 — Match Assessment & Records',
+  '4': 'Activity 4 — Assessment Detective',
+  '5': 'Activity 5 — Card Match Full Cycle'
+};
+
+// ── Fisher-Yates shuffle ─────────────────────────
+function fisherYates(arr){
+  for(var i=arr.length-1;i>0;i--){
+    var j=Math.floor(Math.random()*(i+1));
+    var t=arr[i]; arr[i]=arr[j]; arr[j]=t;
+  }
+  return arr;
+}
+
+// ── Tab switching ────────────────────────────────
+function showTab(i){
+  var acts = document.querySelectorAll('.activity');
+  var btns = document.querySelectorAll('.tab-btn');
+  for(var a=0;a<acts.length;a++){
+    if(a===i){ acts[a].classList.add('active'); } else { acts[a].classList.remove('active'); }
+  }
+  for(var b=0;b<btns.length;b++){
+    if(b===i){ btns[b].classList.add('active'); } else { btns[b].classList.remove('active'); }
+  }
+}
+
+// ── Drag & Drop state ────────────────────────────
+var dragging = null;
+var placements = {};
+
+function initDragDrop(){
+  // Desktop drag events
+  var items = document.querySelectorAll('.drag-item');
+  for(var i=0;i<items.length;i++){
+    (function(el){
+      el.addEventListener('dragstart', function(e){
+        dragging = { act: el.getAttribute('data-act'), id: el.getAttribute('data-id') };
+        el.classList.add('dragging');
+        e.dataTransfer.setData('text/plain','');
+      });
+      el.addEventListener('dragend', function(){
+        el.classList.remove('dragging');
+      });
+
+      // Touch events for mobile
+      el.addEventListener('touchstart', function(e){
+        dragging = { act: el.getAttribute('data-act'), id: el.getAttribute('data-id') };
+        el.classList.add('dragging');
+      }, {passive:true});
+      el.addEventListener('touchend', function(e){
+        el.classList.remove('dragging');
+        if(!dragging) return;
+        var touch = e.changedTouches[0];
+        var target = document.elementFromPoint(touch.clientX, touch.clientY);
+        // Walk up to find a drop-zone
+        while(target && !target.classList.contains('drop-zone')){
+          target = target.parentElement;
+        }
+        if(target && target.classList.contains('drop-zone')){
+          var act = target.getAttribute('data-act');
+          var tgt = target.getAttribute('data-target');
+          if(dragging.act === act){
+            doPlace(act, tgt, dragging.id);
+          }
+        }
+        dragging = null;
+      });
+    })(items[i]);
+  }
+
+  // Drop zones
+  var zones = document.querySelectorAll('.drop-zone');
+  for(var z=0;z<zones.length;z++){
+    (function(zone){
+      zone.addEventListener('dragover', function(e){ e.preventDefault(); zone.classList.add('dz-over'); });
+      zone.addEventListener('dragleave', function(){ zone.classList.remove('dz-over'); });
+      zone.addEventListener('drop', function(e){
+        e.preventDefault();
+        zone.classList.remove('dz-over');
+        if(!dragging) return;
+        var act = zone.getAttribute('data-act');
+        var target = zone.getAttribute('data-target');
+        if(dragging.act !== act) return;
+        doPlace(act, target, dragging.id);
+        dragging = null;
+      });
+    })(zones[z]);
+  }
+}
+
+function doPlace(act, target, id){
+  var key = act+'-'+target;
+  if(placements[key]){
+    var old = document.getElementById('di-'+act+'-'+placements[key]);
+    if(old) old.classList.remove('placed');
+  }
+  var keys = Object.keys(placements);
+  for(var k=0;k<keys.length;k++){
+    if(placements[keys[k]]===id && keys[k]!==key){
+      var parts = keys[k].split('-');
+      var slot = document.getElementById('slot-'+parts[0]+'-'+parts[1]);
+      var rm = document.getElementById('rm-'+parts[0]+'-'+parts[1]);
+      var dz = document.getElementById('dz-'+parts[0]+'-'+parts[1]);
+      if(slot){ slot.textContent='Drop here\u2026'; slot.classList.remove('filled'); }
+      if(rm) rm.classList.remove('visible');
+      if(dz) dz.classList.remove('correct','wrong');
+      delete placements[keys[k]];
+    }
+  }
+  placements[key] = id;
+  var el = document.getElementById('di-'+act+'-'+id);
+  var slot = document.getElementById('slot-'+act+'-'+target);
+  var rm = document.getElementById('rm-'+act+'-'+target);
+  if(el) el.classList.add('placed');
+  if(slot){ slot.textContent = el ? el.textContent : id; slot.classList.add('filled'); }
+  if(rm) rm.classList.add('visible');
+}
+
+function removeItem(act, target){
+  var key = act+'-'+target;
+  var id = placements[key];
+  if(!id) return;
+  var el = document.getElementById('di-'+act+'-'+id);
+  var slot = document.getElementById('slot-'+act+'-'+target);
+  var rm = document.getElementById('rm-'+act+'-'+target);
+  var dz = document.getElementById('dz-'+act+'-'+target);
+  if(el) el.classList.remove('placed');
+  if(slot){ slot.textContent='Drop here\u2026'; slot.classList.remove('filled'); }
+  if(rm) rm.classList.remove('visible');
+  if(dz) dz.classList.remove('correct','wrong');
+  delete placements[key];
+}
+
+// Activity 1 & 3 correct answers & rationale
+var act1data = {
+  a:{ rationale:'The CD focuses on examining past vs present living \u2014 the intention uses comparison and historical evidence, a direct match.' },
+  b:{ rationale:'The CD requires both description and explanation of significance \u2014 both verbs appear in the intention.' },
+  c:{ rationale:'The CD asks for explanation of participation; the intention focuses on identification \u2014 a slight simplification but still well-aligned.' },
+  d:{ rationale:'Sequencing in chronological order maps directly to ordering events on a timeline.' },
+  e:{ rationale:'The intention accurately translates the CD skill into an observable student action.' }
+};
+var act3data = {
+  a:{ rationale:'Exit ticket data is quick and quantifiable \u2014 easily entered into a colour-coded spreadsheet for at-a-glance class tracking.' },
+  b:{ rationale:'A checklist or anecdotal notes allow the teacher to quickly tick and annotate during live observation without interrupting the activity.' },
+  c:{ rationale:'A summative multimedia product requires a rubric that maps evidence against curriculum standards \u2014 the most appropriate record for of-learning assessment.' },
+  d:{ rationale:'Multiple iterations of a KWL+ chart across a unit constitute a body of evidence showing growth \u2014 ideal for a portfolio rather than a one-off record.' },
+  e:{ rationale:'Mentimeter auto-generates a shareable results report, giving the teacher instant formative data with no additional record-keeping effort.' },
+  f:{ rationale:'Video responses are stored on the platform. Teachers can annotate directly in Seesaw/Flip, creating a dated digital record of student voice and reasoning.' }
+};
+
+function checkMatch(act){
+  var data = act==='1' ? act1data : act3data;
+  var ids = act==='1' ? ['a','b','c','d','e'] : ['a','b','c','d','e','f'];
+  var correct = 0;
+  for(var i=0;i<ids.length;i++){
+    var target = ids[i];
+    var key = act+'-'+target;
+    var placed = placements[key];
+    var dz = document.getElementById('dz-'+act+'-'+target);
+    var fb = document.getElementById('fb-'+act+'-'+target);
+    fb.className = 'fb-row';
+    if(!placed){
+      fb.textContent = '\u26A0 Nothing placed here yet.';
+      fb.classList.add('show-w');
+    } else if(placed === target){
+      dz.classList.add('correct'); dz.classList.remove('wrong');
+      fb.textContent = '\u2713 ' + data[target].rationale;
+      fb.classList.add('show-c');
+      correct++;
+    } else {
+      dz.classList.add('wrong'); dz.classList.remove('correct');
+      fb.textContent = '\u2717 That doesn\'t match. ' + data[target].rationale;
+      fb.classList.add('show-w');
+    }
+  }
+  var total = ids.length;
+  var banner = document.getElementById('score-'+act);
+  banner.className = 'score-banner show';
+  banner.innerHTML = '<strong>'+correct+'/'+total+'</strong> correct! '+(correct===total?'\uD83C\uDF89 All matched perfectly!':'Review the highlighted zones and try again.');
+  logToSheet(activityNames[act], correct, total);
+}
+
+function resetMatch(act){
+  var ids = act==='1' ? ['a','b','c','d','e'] : ['a','b','c','d','e','f'];
+  for(var i=0;i<ids.length;i++){
+    removeItem(act, ids[i]);
+    var dz = document.getElementById('dz-'+act+'-'+ids[i]);
+    var fb = document.getElementById('fb-'+act+'-'+ids[i]);
+    if(dz) dz.classList.remove('correct','wrong');
+    if(fb) fb.className='fb-row';
+  }
+  document.getElementById('score-'+act).className='score-banner';
+  shuffleDragItems(act);
+  shuffleDropZones(act);
+}
+
+// ── Scenario / Detective ─────────────────────────
+var det2Answers = [2, 0, 1, 0, 1];
+var det2Rationale = [
+  'Drawing a map does not address the importance of Country or the perspective of Aboriginal and Torres Strait Islander peoples. The task is a geography skill, not conceptual understanding of significance. Not aligned.',
+  'Both the CD and LI reference the same three factors (environment/climate, people, events) and use similar cognitive demand (describe/explain). Well-aligned.',
+  'A persuasive essay is one valid HASS representation, so there is some alignment. However, the CD encompasses maps, timelines, and data displays too \u2014 essay alone may not be the most discipline-appropriate choice. Partially aligned.',
+  'The intention uses student-friendly language that directly maps to "propose" (suggest) and "consider the effects" (think about what might happen). Well-aligned.',
+  'Finding information overlaps with locating sources, but the CD specifically demands critical evaluation \u2014 identifying perspective and distinguishing fact from opinion. Partially aligned.'
+];
+
+var det4Answers = [1, 2, 0, 1, 0];
+var det4Rationale = [
+  'The teacher is using student responses to inform her next instructional step \u2014 a classic for-learning (formative) function. The data shapes teaching, not a grade.',
+  'An end-of-unit report assessed against achievement standards is a summative judgement \u2014 assessment of learning. It reports what has been achieved.',
+  'Students are monitoring their own progress and setting learning goals \u2014 the defining feature of assessment as learning (metacognitive self-regulation).',
+  'The teacher is gathering live observational data to adjust grouping and instruction \u2014 formative assessment for learning.',
+  'Self-rating and peer reflection on their own understanding is assessment as learning \u2014 students are actively engaging in the learning process itself by reflecting on it.'
+];
+
+function checkDetective(act){
+  var n = 5;
+  var answers = act==='2' ? det2Answers : det4Answers;
+  var rationale = act==='2' ? det2Rationale : det4Rationale;
+  var correct = 0;
+  for(var i=0;i<n;i++){
+    var chosen = null;
+    var opts = document.querySelectorAll('input[name="sc-'+act+'-'+i+'"]');
+    for(var o=0;o<opts.length;o++){
+      if(opts[o].checked) chosen=parseInt(opts[o].value);
+    }
+    var fb = document.getElementById('scfb-'+act+'-'+i);
+    var grp = document.getElementById('rg-'+act+'-'+i);
+    fb.className='sc-feedback';
+    var rows = grp.querySelectorAll('.radio-opt');
+    for(var j=0;j<rows.length;j++){
+      rows[j].classList.remove('selected','correct-r','wrong-r','reveal-c');
+      rows[j].querySelector('input').disabled=true;
+      if(j===answers[i]) rows[j].classList.add(chosen===answers[i]?'correct-r':'reveal-c');
+      if(chosen===j && j!==answers[i]) rows[j].classList.add('wrong-r');
+    }
+    if(chosen===null){
+      fb.textContent='\u26A0 Please select an option.';
+      fb.classList.add('show-w');
+    } else if(chosen===answers[i]){
+      fb.textContent='\u2713 Correct! '+rationale[i];
+      fb.classList.add('show-c');
+      correct++;
+    } else {
+      fb.textContent='\u2717 '+rationale[i];
+      fb.classList.add('show-w');
+    }
+  }
+  var banner=document.getElementById('score-'+act);
+  banner.className='score-banner show';
+  banner.innerHTML='<strong>'+correct+'/'+n+'</strong> correct! '+(correct===n?'\uD83C\uDF89 All cases cracked!':'Read the rationale for each scenario and consider what makes a strong match.');
+  logToSheet(activityNames[act], correct, n);
+}
+
+function resetDetective(act){
+  for(var i=0;i<5;i++){
+    var opts = document.querySelectorAll('input[name="sc-'+act+'-'+i+'"]');
+    for(var o=0;o<opts.length;o++){ opts[o].checked=false; opts[o].disabled=false; }
+    var rows = document.getElementById('rg-'+act+'-'+i).querySelectorAll('.radio-opt');
+    for(var r=0;r<rows.length;r++) rows[r].classList.remove('selected','correct-r','wrong-r','reveal-c');
+    document.getElementById('scfb-'+act+'-'+i).className='sc-feedback';
+  }
+  document.getElementById('score-'+act).className='score-banner';
+  shuffleScenarios(act==='2' ? 'act1' : 'act3');
+}
+
+// ── Card Match (Activity 5) ─────────────────────
+var cmSel = [null,null,null,null];
+
+function cmClick(col, row, el){
+  if(cmSel[col]!==null){
+    var prev=document.getElementById('cm-'+col+'-'+cmSel[col]);
+    if(prev) prev.classList.remove('cm-selected','cm-correct','cm-wrong');
+  }
+  cmSel[col]=row;
+  el.classList.add('cm-selected');
+}
+
+function checkCardMatch(){
+  var banner=document.getElementById('score-5');
+  banner.className='score-banner show';
+  if(cmSel[0]===null||cmSel[1]===null||cmSel[2]===null||cmSel[3]===null){
+    banner.innerHTML='\u26A0 Please select one card from <strong>each</strong> of the four columns before checking.';
+    return;
+  }
+  var allSame = cmSel[0]===cmSel[1] && cmSel[1]===cmSel[2] && cmSel[2]===cmSel[3];
+  for(var c=0;c<4;c++){
+    var card=document.getElementById('cm-'+c+'-'+cmSel[c]);
+    if(card){
+      card.classList.remove('cm-selected','cm-correct','cm-wrong');
+      card.classList.add(allSame?'cm-correct':'cm-wrong');
+    }
+  }
+  if(allSame){
+    banner.innerHTML='<strong>\u2713 Perfect match!</strong> All four elements belong to the same assessment cycle. Reset to try matching another row!';
+    logToSheet(activityNames['5'], 1, 1);
+  } else {
+    banner.innerHTML='<strong>Not quite.</strong> Your four selections don\'t all come from the same cycle row. The highlighted cards show your choices \u2014 check that each column\'s card belongs to the same assessment cycle and try again.';
+    logToSheet(activityNames['5'], 0, 1);
+  }
+}
+
+function resetCardMatch(){
+  cmSel=[null,null,null,null];
+  var cards = document.querySelectorAll('.cm-card');
+  for(var i=0;i<cards.length;i++) cards[i].classList.remove('cm-selected','cm-correct','cm-wrong');
+  document.getElementById('score-5').className='score-banner';
+  shuffleActivity5();
+}
+
+// ── Total Score Calculation ──────────────────────
+function getMatchScore(act){
+  var ids = act==='1' ? ['a','b','c','d','e'] : ['a','b','c','d','e','f'];
+  var banner = document.getElementById('score-'+act);
+  if(!banner || !banner.classList.contains('show')) return null;
+  var correct = 0;
+  for(var i=0;i<ids.length;i++){
+    if(placements[act+'-'+ids[i]]===ids[i]) correct++;
+  }
+  return {correct:correct, total:ids.length};
+}
+
+function getDetectiveScore(act){
+  var banner = document.getElementById('score-'+act);
+  if(!banner || !banner.classList.contains('show')) return null;
+  var answers = act==='2' ? det2Answers : det4Answers;
+  var correct = 0;
+  for(var i=0;i<5;i++){
+    var chosen = null;
+    var opts = document.querySelectorAll('input[name="sc-'+act+'-'+i+'"]');
+    for(var o=0;o<opts.length;o++){ if(opts[o].checked) chosen=parseInt(opts[o].value); }
+    if(chosen===answers[i]) correct++;
+  }
+  return {correct:correct, total:5};
+}
+
+function getCardMatchScore(){
+  var banner = document.getElementById('score-5');
+  if(!banner || !banner.classList.contains('show')) return null;
+  if(cmSel[0]===null||cmSel[1]===null||cmSel[2]===null||cmSel[3]===null) return {correct:0, total:1};
+  var allSame = cmSel[0]===cmSel[1] && cmSel[1]===cmSel[2] && cmSel[2]===cmSel[3];
+  return {correct:allSame?1:0, total:1};
+}
+
+function calcTotal(){
+  var scores = [getMatchScore('1'), getDetectiveScore('2'), getMatchScore('3'), getDetectiveScore('4'), getCardMatchScore()];
+  var ids = ['ts-1','ts-2','ts-3','ts-4','ts-5'];
+  var grandCorrect=0, grandTotal=0, allChecked=true;
+
+  for(var i=0;i<scores.length;i++){
+    var cell = document.getElementById(ids[i]);
+    var s = scores[i];
+    if(s===null){
+      cell.innerHTML='<span class="status-dot dot-none"></span> \u2014';
+      allChecked=false;
+    } else {
+      grandCorrect+=s.correct;
+      grandTotal+=s.total;
+      var dot = s.correct===s.total ? 'dot-perfect' : (s.correct>0?'dot-partial':'dot-none');
+      cell.innerHTML='<span class="status-dot '+dot+'"></span> '+s.correct+' / '+s.total;
+    }
+  }
+
+  var numEl = document.getElementById('total-num');
+  var totalCell = document.getElementById('ts-total');
+  var msgEl = document.getElementById('total-msg');
+
+  if(!allChecked){
+    numEl.textContent = grandCorrect+' / '+grandTotal+'+';
+    totalCell.innerHTML = grandCorrect+' / '+grandTotal+'+';
+    msgEl.style.background='var(--amber-lt)'; msgEl.style.color='var(--amber)';
+    msgEl.textContent='Some activities haven\'t been checked yet. Complete all five and click Check Answers in each before viewing your full total.';
+  } else {
+    numEl.textContent = grandCorrect+' / '+grandTotal;
+    totalCell.innerHTML = '<strong>'+grandCorrect+' / '+grandTotal+'</strong>';
+    var pct = Math.round((grandCorrect/grandTotal)*100);
+    if(pct===100){
+      msgEl.style.background='var(--correct-lt)'; msgEl.style.color='var(--correct)';
+      msgEl.textContent='\uD83C\uDF89 Perfect score! You\'ve nailed every activity!';
+    } else if(pct>=70){
+      msgEl.style.background='var(--correct-lt)'; msgEl.style.color='var(--correct)';
+      msgEl.textContent='Great work! You scored '+pct+'%. Review any incorrect answers for areas to strengthen.';
+    } else {
+      msgEl.style.background='var(--amber-lt)'; msgEl.style.color='var(--amber)';
+      msgEl.textContent='You scored '+pct+'%. Take another look at the rationale for incorrect answers and try again.';
+    }
+  }
+}
+
+// ── Shuffle functions ────────────────────────────
+function shuffleDragItems(act){
+  if(act){
+    var bank = document.getElementById('bank-'+act);
+    if(bank){
+      var arr = fisherYates(Array.from(bank.children));
+      for(var i=0;i<arr.length;i++) bank.appendChild(arr[i]);
+    }
+  } else {
+    // Shuffle all banks
+    var b1 = document.getElementById('bank-1');
+    var b3 = document.getElementById('bank-3');
+    if(b1){ var a1=fisherYates(Array.from(b1.children)); for(var i=0;i<a1.length;i++) b1.appendChild(a1[i]); }
+    if(b3){ var a3=fisherYates(Array.from(b3.children)); for(var i=0;i<a3.length;i++) b3.appendChild(a3[i]); }
+  }
+}
+
+function shuffleDropZones(act){
+  var actEl = document.getElementById(act==='1'?'act0':'act2');
+  if(!actEl) return;
+  var matchWrap = actEl.querySelector('.match-wrap');
+  if(!matchWrap) return;
+  var rightCol = matchWrap.children[1];
+  if(!rightCol) return;
+  var wraps = fisherYates(Array.from(rightCol.querySelectorAll('.drop-zone-wrap')));
+  for(var i=0;i<wraps.length;i++) rightCol.appendChild(wraps[i]);
+}
+
+function shuffleScenarios(actId){
+  var actEl = document.getElementById(actId);
+  if(!actEl) return;
+  var cards = Array.from(actEl.querySelectorAll('.scenario-card'));
+  if(cards.length===0) return;
+  var btnRow = actEl.querySelector('.btn-row');
+  fisherYates(cards);
+  for(var i=0;i<cards.length;i++){
+    var label = cards[i].querySelector('.sc-label');
+    if(label) label.textContent = 'Scenario '+(i+1)+' of '+cards.length;
+    actEl.insertBefore(cards[i], btnRow);
+  }
+}
+
+function shuffleActivity5(){
+  var actEl = document.getElementById('act4');
+  if(!actEl) return;
+  var grid = actEl.querySelector('.cm-grid');
+  if(!grid) return;
+  var cols = grid.children;
+  for(var c=0;c<cols.length;c++){
+    var cards = fisherYates(Array.from(cols[c].querySelectorAll('.cm-card')));
+    for(var i=0;i<cards.length;i++) cols[c].appendChild(cards[i]);
+  }
+}
+
+// ── Initialise everything on page load ───────────
+(function(){
+  // Wire up drag & drop (desktop + touch)
+  initDragDrop();
+
+  // Shuffle all activities
+  shuffleDragItems();
+  shuffleDropZones('1');
+  shuffleDropZones('3');
+  shuffleScenarios('act1');
+  shuffleScenarios('act3');
+  shuffleActivity5();
+})();
+</script>
+</body>
+</html>
