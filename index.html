@@ -87,6 +87,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f4f8;color:var(--slate);line
 .cm-card.cm-selected{border-color:var(--teal);background:var(--teal-lt);}
 .cm-card.cm-correct{border-color:var(--correct);background:var(--correct-lt);}
 .cm-card.cm-wrong{border-color:var(--wrong);background:var(--wrong-lt);}
+.cm-card.cm-done{opacity:.4;pointer-events:none;cursor:default;background:#f0f0f0;border-color:#d0d0d0;box-shadow:none;}
 
 /* Buttons & score */
 .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
@@ -425,7 +426,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f4f8;color:var(--slate);line
   <div class="activity-header">
     <span class="badge badge-teal">Card Matching</span><span class="badge badge-amber">Synthesis</span>
     <h2>Activity 5 — Full Cycle Match: Strategy → Purpose → ICT Tool → Record</h2>
-    <p>Click one card in <strong>each</strong> column that you think belongs to the same assessment cycle, then click <strong>Check Answers</strong>. Reset to try another cycle.</p>
+    <p>Work down the <strong>Assessment Strategy</strong> column on the left. For each strategy, click the matching card in the Purpose, ICT Tool, and Record columns, then click <strong>Check Answers</strong>. Correct matches will be greyed out so you can move to the next row.</p>
   </div>
 
   <div class="cm-grid">
@@ -502,7 +503,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f4f8;color:var(--slate);line
 // ══════════════════════════════════════════════════
 // TEACHER SETUP: Paste your Google Apps Script Web App URL below
 // ══════════════════════════════════════════════════
-var GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxutYN2GTiMq2G1fyGKhy7TDgPEYGmzx7T1cuJbFrQvCnLqCmFW9utQtkSZ0RBKdm_imA/exec';
+var GOOGLE_SHEET_URL = '';
 
 // ── Student identification ───────────────────────
 var studentName = '';
@@ -808,8 +809,11 @@ function resetDetective(act){
 
 // ── Card Match (Activity 5) ─────────────────────
 var cmSel = [null,null,null,null];
+var cmCompleted = []; // rows that have been correctly matched
 
 function cmClick(col, row, el){
+  // Don't allow clicking on completed cards
+  if(el.classList.contains('cm-done')) return;
   if(cmSel[col]!==null){
     var prev=document.getElementById('cm-'+col+'-'+cmSel[col]);
     if(prev) prev.classList.remove('cm-selected','cm-correct','cm-wrong');
@@ -834,18 +838,49 @@ function checkCardMatch(){
     }
   }
   if(allSame){
-    banner.innerHTML='<strong>\u2713 Perfect match!</strong> All four elements belong to the same assessment cycle. Reset to try matching another row!';
-    logToSheet(activityNames['5'], 1, 1);
+    var matchedRow = cmSel[0];
+    cmCompleted.push(matchedRow);
+    // Grey out all cards in this row after a short delay so students see the green
+    setTimeout(function(){
+      for(var c=0;c<4;c++){
+        var card=document.getElementById('cm-'+c+'-'+matchedRow);
+        if(card){
+          card.classList.remove('cm-selected','cm-correct','cm-wrong');
+          card.classList.add('cm-done');
+        }
+      }
+      // Clear selections
+      cmSel=[null,null,null,null];
+      // Reshuffle the non-completed cards in columns 1-3
+      shuffleActivity5();
+    }, 1200);
+    if(cmCompleted.length===5){
+      banner.innerHTML='<strong>\uD83C\uDF89 All 5 cycles matched!</strong> You scored <strong>5/5</strong>. Outstanding work!';
+      logToSheet(activityNames['5'], 5, 5);
+    } else {
+      banner.innerHTML='<strong>\u2713 Correct!</strong> '+cmCompleted.length+'/5 matched. Select the next row from the left column.';
+      logToSheet(activityNames['5'], cmCompleted.length, 5);
+    }
   } else {
-    banner.innerHTML='<strong>Not quite.</strong> Your four selections don\'t all come from the same cycle row. The highlighted cards show your choices \u2014 check that each column\'s card belongs to the same assessment cycle and try again.';
-    logToSheet(activityNames['5'], 0, 1);
+    // Clear wrong selections after a short delay
+    setTimeout(function(){
+      for(var c=0;c<4;c++){
+        if(cmSel[c]!==null){
+          var card=document.getElementById('cm-'+c+'-'+cmSel[c]);
+          if(card) card.classList.remove('cm-selected','cm-correct','cm-wrong');
+        }
+      }
+      cmSel=[null,null,null,null];
+    }, 1200);
+    banner.innerHTML='<strong>Not quite.</strong> Those four cards don\u2019t belong to the same assessment cycle. Try again.';
   }
 }
 
 function resetCardMatch(){
   cmSel=[null,null,null,null];
+  cmCompleted=[];
   var cards = document.querySelectorAll('.cm-card');
-  for(var i=0;i<cards.length;i++) cards[i].classList.remove('cm-selected','cm-correct','cm-wrong');
+  for(var i=0;i<cards.length;i++) cards[i].classList.remove('cm-selected','cm-correct','cm-wrong','cm-done');
   document.getElementById('score-5').className='score-banner';
   shuffleActivity5();
 }
@@ -879,9 +914,7 @@ function getDetectiveScore(act){
 function getCardMatchScore(){
   var banner = document.getElementById('score-5');
   if(!banner || !banner.classList.contains('show')) return null;
-  if(cmSel[0]===null||cmSel[1]===null||cmSel[2]===null||cmSel[3]===null) return {correct:0, total:1};
-  var allSame = cmSel[0]===cmSel[1] && cmSel[1]===cmSel[2] && cmSel[2]===cmSel[3];
-  return {correct:allSame?1:0, total:1};
+  return {correct:cmCompleted.length, total:5};
 }
 
 function calcTotal(){
@@ -977,9 +1010,17 @@ function shuffleActivity5(){
   var grid = actEl.querySelector('.cm-grid');
   if(!grid) return;
   var cols = grid.children;
-  for(var c=0;c<cols.length;c++){
-    var cards = fisherYates(Array.from(cols[c].querySelectorAll('.cm-card')));
-    for(var i=0;i<cards.length;i++) cols[c].appendChild(cards[i]);
+  // Only shuffle columns 1, 2, 3 (skip column 0 — Assessment Strategy stays fixed)
+  for(var c=1;c<cols.length;c++){
+    // Only shuffle non-completed cards
+    var allCards = Array.from(cols[c].querySelectorAll('.cm-card'));
+    var activeCards = [];
+    for(var i=0;i<allCards.length;i++){
+      if(!allCards[i].classList.contains('cm-done')) activeCards.push(allCards[i]);
+    }
+    fisherYates(activeCards);
+    // Re-append: completed cards stay at top, then shuffled active cards
+    for(var i=0;i<activeCards.length;i++) cols[c].appendChild(activeCards[i]);
   }
 }
 
