@@ -116,6 +116,19 @@ body{font-family:'DM Sans',sans-serif;background:#f0f4f8;color:var(--slate);line
 .dot-none{background:var(--border);}
 .total-row td{background:var(--teal-lt);font-weight:700;border-top:2px solid var(--teal);}
 .total-msg{margin-top:18px;padding:14px 20px;border-radius:var(--radius);font-size:.9rem;max-width:540px;margin-left:auto;margin-right:auto;}
+
+/* ── Sticky bottom score bar ── */
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(135deg,var(--teal) 0%,#0e4545 100%);color:white;padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:16px;font-family:'DM Sans',sans-serif;font-size:.88rem;box-shadow:0 -3px 16px rgba(0,0,0,.15);z-index:1000;transform:translateY(100%);transition:transform .4s ease;}
+.bottom-bar.visible{transform:translateY(0);}
+.bottom-bar .bb-scores{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;}
+.bottom-bar .bb-pill{background:rgba(255,255,255,.15);padding:4px 10px;border-radius:16px;font-size:.76rem;font-weight:600;white-space:nowrap;}
+.bottom-bar .bb-pill.done{background:rgba(255,255,255,.3);}
+.bottom-bar .bb-pill.pending{opacity:.5;}
+.bottom-bar .bb-total{font-size:1.1rem;font-weight:700;margin-left:8px;padding:4px 14px;background:rgba(255,255,255,.2);border-radius:20px;}
+.bottom-bar .bb-msg{font-size:.82rem;opacity:.85;}
+.bottom-bar .bb-close{background:none;border:none;color:rgba(255,255,255,.6);font-size:1.2rem;cursor:pointer;padding:4px 8px;margin-left:8px;flex-shrink:0;}
+.bottom-bar .bb-close:hover{color:white;}
+@media(max-width:600px){.bottom-bar{flex-direction:column;gap:8px;padding:8px 14px;} .bottom-bar .bb-scores{gap:6px;}}
 </style>
 </head>
 <body>
@@ -499,6 +512,20 @@ body{font-family:'DM Sans',sans-serif;background:#f0f4f8;color:var(--slate);line
   </div>
 </div>
 
+<!-- ══════════════════ STICKY BOTTOM BAR ══════════════════ -->
+<div class="bottom-bar" id="bottom-bar">
+  <div class="bb-scores">
+    <span class="bb-pill pending" id="bb-1">① —</span>
+    <span class="bb-pill pending" id="bb-2">② —</span>
+    <span class="bb-pill pending" id="bb-3">③ —</span>
+    <span class="bb-pill pending" id="bb-4">④ —</span>
+    <span class="bb-pill pending" id="bb-5">⑤ —</span>
+    <span class="bb-total" id="bb-total">—</span>
+  </div>
+  <span class="bb-msg" id="bb-msg"></span>
+  <button class="bb-close" onclick="document.getElementById('bottom-bar').classList.remove('visible')" title="Dismiss">✕</button>
+</div>
+
 <script>
 // ══════════════════════════════════════════════════
 // TEACHER SETUP: Paste your Google Apps Script Web App URL below
@@ -721,6 +748,7 @@ function checkMatch(act){
   banner.className = 'score-banner show';
   banner.innerHTML = '<strong>'+correct+'/'+total+'</strong> correct! '+(correct===total?'\uD83C\uDF89 All matched perfectly!':'Review the highlighted zones and try again.');
   logToSheet(activityNames[act], correct, total);
+  updateBottomBar();
 }
 
 function resetMatch(act){
@@ -793,6 +821,7 @@ function checkDetective(act){
   banner.className='score-banner show';
   banner.innerHTML='<strong>'+correct+'/'+n+'</strong> correct! '+(correct===n?'\uD83C\uDF89 All cases cracked!':'Read the rationale for each scenario and consider what makes a strong match.');
   logToSheet(activityNames[act], correct, n);
+  updateBottomBar();
 }
 
 function resetDetective(act){
@@ -874,6 +903,7 @@ function checkCardMatch(){
     }, 1200);
     banner.innerHTML='<strong>Not quite.</strong> Those four cards don\u2019t belong to the same assessment cycle. Try again.';
   }
+  updateBottomBar();
 }
 
 function resetCardMatch(){
@@ -959,6 +989,56 @@ function calcTotal(){
       msgEl.style.background='var(--amber-lt)'; msgEl.style.color='var(--amber)';
       msgEl.textContent='You scored '+pct+'%. Take another look at the rationale for incorrect answers and try again.';
     }
+  }
+}
+
+// ── Bottom Score Bar ─────────────────────────────
+var bbChecked = [false,false,false,false,false]; // track which activities have been checked
+
+function updateBottomBar(){
+  var scores = [getMatchScore('1'), getDetectiveScore('2'), getMatchScore('3'), getDetectiveScore('4'), getCardMatchScore()];
+  var labels = ['\u2460','\u2461','\u2462','\u2463','\u2464'];
+  var anyChecked = false;
+  var grandCorrect=0, grandTotal=0, allChecked=true;
+
+  for(var i=0;i<scores.length;i++){
+    var pill = document.getElementById('bb-'+(i+1));
+    var s = scores[i];
+    if(s===null){
+      pill.className='bb-pill pending';
+      pill.textContent=labels[i]+' \u2014';
+      allChecked=false;
+    } else {
+      anyChecked=true;
+      bbChecked[i]=true;
+      grandCorrect+=s.correct;
+      grandTotal+=s.total;
+      pill.className='bb-pill done';
+      pill.textContent=labels[i]+' '+s.correct+'/'+s.total;
+    }
+  }
+
+  var bar = document.getElementById('bottom-bar');
+  var totalEl = document.getElementById('bb-total');
+  var msgEl = document.getElementById('bb-msg');
+
+  if(!anyChecked){
+    bar.classList.remove('visible');
+    return;
+  }
+
+  bar.classList.add('visible');
+  totalEl.textContent = grandCorrect+'/'+grandTotal+(allChecked?'':'+');
+
+  if(allChecked){
+    var pct = Math.round((grandCorrect/grandTotal)*100);
+    if(pct===100) msgEl.textContent='\uD83C\uDF89 Perfect!';
+    else if(pct>=70) msgEl.textContent='Great work \u2014 '+pct+'%';
+    else msgEl.textContent=pct+'% \u2014 review & retry';
+  } else {
+    var remaining = 0;
+    for(var i=0;i<bbChecked.length;i++) if(!bbChecked[i]) remaining++;
+    msgEl.textContent=remaining+' activit'+(remaining===1?'y':'ies')+' remaining';
   }
 }
 
