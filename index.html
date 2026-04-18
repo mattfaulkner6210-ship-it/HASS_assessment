@@ -50,13 +50,13 @@ body{font-family:'DM Sans',sans-serif;background:#f0f4f8;color:var(--slate);line
 /* Drop zones */
 .drop-zone-wrap{margin-bottom:12px;}
 .drop-zone{background:var(--slate-lt);border:2px dashed var(--border);border-radius:8px;padding:10px 12px;min-height:56px;font-size:.84rem;display:flex;align-items:center;gap:8px;transition:border-color .2s,background .2s;}
-.drop-zone .dz-prompt{font-weight:600;color:var(--slate);flex:0 0 auto;max-width:52%;font-size:.83rem;}
-.drop-zone .dz-slot{flex:1;min-height:36px;background:white;border:2px dashed #c8d4e0;border-radius:6px;display:flex;align-items:center;padding:4px 10px;font-size:.82rem;color:#a0aec0;font-style:italic;transition:all .2s;position:relative;}
+.drop-zone .dz-prompt{font-weight:600;color:var(--slate);flex:0 0 auto;max-width:52%;font-size:.83rem;pointer-events:none;}
+.drop-zone .dz-slot{flex:1;min-height:36px;background:white;border:2px dashed #c8d4e0;border-radius:6px;display:flex;align-items:center;padding:4px 10px;font-size:.82rem;color:#a0aec0;font-style:italic;transition:all .2s;position:relative;pointer-events:none;}
 .drop-zone.dz-over{border-color:var(--teal);background:var(--teal-lt);}
 .drop-zone .dz-slot.filled{color:var(--slate);font-style:normal;background:var(--teal-lt);border-color:var(--teal);border-style:solid;}
 .drop-zone.correct .dz-slot{background:var(--correct-lt);border-color:var(--correct);color:var(--correct);}
 .drop-zone.wrong   .dz-slot{background:var(--wrong-lt);  border-color:var(--wrong);  color:var(--wrong);}
-.remove-btn{background:none;border:none;cursor:pointer;color:var(--mid);font-size:.95rem;padding:0 4px;flex-shrink:0;display:none;}
+.remove-btn{background:none;border:none;cursor:pointer;color:var(--mid);font-size:.95rem;padding:0 4px;flex-shrink:0;display:none;pointer-events:auto;position:relative;z-index:1;}
 .remove-btn.visible{display:block;}
 .fb-row{font-size:.8rem;margin-top:5px;padding:6px 10px;border-radius:6px;display:none;line-height:1.5;}
 .fb-row.show-c{display:block;background:var(--correct-lt);color:var(--correct);}
@@ -530,7 +530,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f4f8;color:var(--slate);line
 // ══════════════════════════════════════════════════
 // TEACHER SETUP: Paste your Google Apps Script Web App URL below
 // ══════════════════════════════════════════════════
-var GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/https://docs.google.com/spreadsheets/d/1_8TcFHDJe6lVOUn9z0p2iE_ruibBZhwuxcm85ruakqc/edit?gid=0#gid=0/exec'';
+var GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxutYN2GTiMq2G1fyGKhy7TDgPEYGmzx7T1cuJbFrQvCnLqCmFW9utQtkSZ0RBKdm_imA/exec';
 
 // ── Student identification ───────────────────────
 var studentName = '';
