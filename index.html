@@ -100,22 +100,6 @@ body{font-family:'DM Sans',sans-serif;background:#f0f4f8;color:var(--slate);line
 .score-banner.show{display:block;}
 .score-banner strong{color:var(--teal);font-size:1.05rem;}
 
-/* ── Total Score Panel ── */
-.total-score-panel{text-align:center;padding:30px 20px;}
-.total-score-ring{width:160px;height:160px;margin:0 auto 20px;}
-.total-score-num{font-size:2.2rem;font-weight:700;color:var(--teal);}
-.total-score-label{font-size:.9rem;color:var(--mid);margin-bottom:24px;}
-.breakdown-table{width:100%;max-width:540px;margin:0 auto;border-collapse:separate;border-spacing:0;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
-.breakdown-table th{background:var(--teal);color:white;padding:10px 14px;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;text-align:left;}
-.breakdown-table td{background:white;padding:10px 14px;font-size:.86rem;border-bottom:1px solid var(--border);}
-.breakdown-table tr:last-child td{border-bottom:none;}
-.breakdown-table .score-cell{text-align:center;font-weight:700;color:var(--teal);width:90px;}
-.breakdown-table .status-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;}
-.dot-perfect{background:var(--correct);}
-.dot-partial{background:var(--amber);}
-.dot-none{background:var(--border);}
-.total-row td{background:var(--teal-lt);font-weight:700;border-top:2px solid var(--teal);}
-.total-msg{margin-top:18px;padding:14px 20px;border-radius:var(--radius);font-size:.9rem;max-width:540px;margin-left:auto;margin-right:auto;}
 
 /* ── Sticky bottom score bar ── */
 .bottom-bar{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(135deg,var(--teal) 0%,#0e4545 100%);color:white;padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:16px;font-family:'DM Sans',sans-serif;font-size:.88rem;box-shadow:0 -3px 16px rgba(0,0,0,.15);z-index:1000;transform:translateY(100%);transition:transform .4s ease;}
@@ -144,7 +128,6 @@ body{font-family:'DM Sans',sans-serif;background:#f0f4f8;color:var(--slate);line
   <button class="tab-btn" onclick="showTab(2)">③ Match: Assessment &amp; Records</button>
   <button class="tab-btn" onclick="showTab(3)">④ Detective: Assessment</button>
   <button class="tab-btn" onclick="showTab(4)">⑤ Card Match: Full Cycle</button>
-  <button class="tab-btn" onclick="showTab(5);calcTotal()">📊 Total Score</button>
 </nav>
 
 <!-- ══════════════════ ACTIVITY 1 ══════════════════ -->
@@ -484,33 +467,6 @@ body{font-family:'DM Sans',sans-serif;background:#f0f4f8;color:var(--slate);line
   <div class="score-banner" id="score-5"></div>
 </div>
 
-<!-- ══════════════════ TOTAL SCORE ══════════════════ -->
-<div class="activity" id="act5">
-  <div class="activity-header">
-    <span class="badge badge-teal">Summary</span><span class="badge badge-amber">All Activities</span>
-    <h2>Total Score — All Activities</h2>
-    <p>Your combined results across all five activities. Complete each activity and click <strong>Check Answers</strong> before viewing your total.</p>
-  </div>
-  <div class="total-score-panel">
-    <div class="total-score-num" id="total-num">— / —</div>
-    <div class="total-score-label">Total correct answers</div>
-    <table class="breakdown-table">
-      <thead><tr><th>Activity</th><th>Type</th><th class="score-cell">Score</th></tr></thead>
-      <tbody id="breakdown-body">
-        <tr><td>① Match: CDs &amp; Intentions</td><td>Drag &amp; Drop</td><td class="score-cell" id="ts-1">—</td></tr>
-        <tr><td>② Detective: Alignment</td><td>Scenario</td><td class="score-cell" id="ts-2">—</td></tr>
-        <tr><td>③ Match: Assessment &amp; Records</td><td>Drag &amp; Drop</td><td class="score-cell" id="ts-3">—</td></tr>
-        <tr><td>④ Detective: Assessment</td><td>Scenario</td><td class="score-cell" id="ts-4">—</td></tr>
-        <tr><td>⑤ Card Match: Full Cycle</td><td>Card Match</td><td class="score-cell" id="ts-5">—</td></tr>
-        <tr class="total-row"><td colspan="2">Total</td><td class="score-cell" id="ts-total">—</td></tr>
-      </tbody>
-    </table>
-    <div class="total-msg" id="total-msg"></div>
-    <div class="btn-row" style="justify-content:center;margin-top:20px;">
-      <button class="btn btn-primary" onclick="calcTotal()">Refresh Scores</button>
-    </div>
-  </div>
-</div>
 
 <!-- ══════════════════ STICKY BOTTOM BAR ══════════════════ -->
 <div class="bottom-bar" id="bottom-bar">
@@ -915,7 +871,6 @@ function resetCardMatch(){
   shuffleActivity5();
 }
 
-// ── Total Score Calculation ──────────────────────
 function getMatchScore(act){
   var ids = act==='1' ? ['a','b','c','d','e'] : ['a','b','c','d','e','f'];
   var banner = document.getElementById('score-'+act);
@@ -947,50 +902,7 @@ function getCardMatchScore(){
   return {correct:cmCompleted.length, total:5};
 }
 
-function calcTotal(){
-  var scores = [getMatchScore('1'), getDetectiveScore('2'), getMatchScore('3'), getDetectiveScore('4'), getCardMatchScore()];
-  var ids = ['ts-1','ts-2','ts-3','ts-4','ts-5'];
-  var grandCorrect=0, grandTotal=0, allChecked=true;
 
-  for(var i=0;i<scores.length;i++){
-    var cell = document.getElementById(ids[i]);
-    var s = scores[i];
-    if(s===null){
-      cell.innerHTML='<span class="status-dot dot-none"></span> \u2014';
-      allChecked=false;
-    } else {
-      grandCorrect+=s.correct;
-      grandTotal+=s.total;
-      var dot = s.correct===s.total ? 'dot-perfect' : (s.correct>0?'dot-partial':'dot-none');
-      cell.innerHTML='<span class="status-dot '+dot+'"></span> '+s.correct+' / '+s.total;
-    }
-  }
-
-  var numEl = document.getElementById('total-num');
-  var totalCell = document.getElementById('ts-total');
-  var msgEl = document.getElementById('total-msg');
-
-  if(!allChecked){
-    numEl.textContent = grandCorrect+' / '+grandTotal+'+';
-    totalCell.innerHTML = grandCorrect+' / '+grandTotal+'+';
-    msgEl.style.background='var(--amber-lt)'; msgEl.style.color='var(--amber)';
-    msgEl.textContent='Some activities haven\'t been checked yet. Complete all five and click Check Answers in each before viewing your full total.';
-  } else {
-    numEl.textContent = grandCorrect+' / '+grandTotal;
-    totalCell.innerHTML = '<strong>'+grandCorrect+' / '+grandTotal+'</strong>';
-    var pct = Math.round((grandCorrect/grandTotal)*100);
-    if(pct===100){
-      msgEl.style.background='var(--correct-lt)'; msgEl.style.color='var(--correct)';
-      msgEl.textContent='\uD83C\uDF89 Perfect score! You\'ve nailed every activity!';
-    } else if(pct>=70){
-      msgEl.style.background='var(--correct-lt)'; msgEl.style.color='var(--correct)';
-      msgEl.textContent='Great work! You scored '+pct+'%. Review any incorrect answers for areas to strengthen.';
-    } else {
-      msgEl.style.background='var(--amber-lt)'; msgEl.style.color='var(--amber)';
-      msgEl.textContent='You scored '+pct+'%. Take another look at the rationale for incorrect answers and try again.';
-    }
-  }
-}
 
 // ── Bottom Score Bar ─────────────────────────────
 var bbChecked = [false,false,false,false,false]; // track which activities have been checked
